@@ -32,5 +32,6 @@ desktop.ini
 投行工作台/workbench.db-wal
 投行工作台-云端版/assets/data/workbench.db
 
-# 旧版本运行副本（230M，不入库）
+# 旧版本运行副本（数百 MB，不入库）
+_运行_*/
 _运行_v2026.11.02.8/
