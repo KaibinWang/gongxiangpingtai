@@ -1,0 +1,36 @@
+# 运行环境与临时产物，不纳入版本控制
+投行工作台/.venv/
+投行工作台/_wheels/
+**/__pycache__/
+*.pyc
+*.log
+投行工作台/uploads/imports/
+投行工作台/uploads/*.xlsx
+
+# 工具缓存 / 部署残留
+.netlify/
+.workbuddy/
+.tmp/
+
+# 系统
+Thumbs.db
+desktop.ini
+
+# 版本备份压缩包不进仓库
+版本备份/
+
+# 临时文件
+投行工作台/_ck.txt
+投行工作台/_*.html
+投行工作台/uploads/cfg/
+投行工作台/_gd.xlsx
+投行工作台/*_gd.xlsx
+
+# 业务数据库（含真实客户数据，不入版本库）
+投行工作台/workbench.db
+投行工作台/workbench.db-journal
+投行工作台/workbench.db-wal
+投行工作台-云端版/assets/data/workbench.db
+
+# 旧版本运行副本（230M，不入库）
+_运行_v2026.11.02.8/
