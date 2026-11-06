@@ -220,6 +220,27 @@ def iso_date_to_cn(s):
     return "%d年%d月%d日" % (int(m.group(1)), int(m.group(2)), int(m.group(3))) if m else ""
 
 
+def gd_date_iso(s):
+    """固贷台账推送日期 -> 2026-10-29
+    兼容：2026-10-29 / 2026/10/29 / 2026年10月29日 / 10月29日（缺年份按当年）"""
+    s = str(s or "").strip()
+    if not s:
+        return ""
+    m = re.match(r"(\d{4})\s*[-/.年]\s*(\d{1,2})\s*[-/.月]\s*(\d{1,2})", s)
+    if m:
+        try:
+            return datetime.date(int(m.group(1)), int(m.group(2)), int(m.group(3))).strftime("%Y-%m-%d")
+        except ValueError:
+            return ""
+    m = re.match(r"(\d{1,2})\s*月\s*(\d{1,2})\s*日?", s)
+    if m:
+        try:
+            return datetime.date(datetime.date.today().year, int(m.group(1)), int(m.group(2))).strftime("%Y-%m-%d")
+        except ValueError:
+            return ""
+    return ""
+
+
 # S70 导入时需归一化的日期列（data_date 存中文格式，借据起止日期存 ISO）
 S70_DATE_COLS = {"data_date", "loan_start", "loan_end"}
 XL_EPOCH = datetime.datetime(1899, 12, 30)   # Excel 1900 日期系统基准
@@ -3041,7 +3062,14 @@ def gov():
     if region:
         cond += " AND region LIKE ?"; args.append("%%%s%%" % region)
     if push_date:
-        cond += " AND push_date LIKE ?"; args.append("%%%s%%" % push_date)
+        # 日期组件传 2026-10-29；兼容库中旧数据「10月29日」与新数据「2026-10-29」
+        _pi = gd_date_iso(push_date)
+        if _pi:
+            _y, _m, _d = _pi.split("-")
+            cond += " AND (push_date = ? OR push_date = ?)"
+            args += [_pi, "%d月%d日" % (int(_m), int(_d))]
+        else:
+            cond += " AND push_date LIKE ?"; args.append("%%%s%%" % push_date)
 
     conn = get_db()
     total = conn.execute("SELECT COUNT(*) c FROM gudai_deals WHERE " + cond, args).fetchone()["c"]
@@ -3071,10 +3099,11 @@ def gov():
         "<td>%s</td><td>%s</td><td>%s</td><td>%s</td>"
         "<td><a href='/gov?gid=%d&%s'>编辑</a> "
         "<a href='/gov/gudai/delete/%d' onclick=\"return confirm('确认删除？')\">删除</a></td></tr>"
-        % ((cur_page - 1) * PER + i + 1, g["push_date"] or "—", g["unit"] or "—", g["name"] or "—",
-           g["region"] or "—", ("%g" % g["amount"]) if g["amount"] else "—",
+        % ((cur_page - 1) * PER + i + 1,
+           (gd_date_iso(g["push_date"]) or g["push_date"] or "—"), g["unit"] or "—", g["name"] or "—",
+           g["region"] or "—", s70_num(g["amount"]) or "—",
            g["content"] or "—", g["manager"] or "—", g["note"] or "—",
-           ("%g" % g["approval_amount"]) if g["approval_amount"] else "—",
+           s70_num(g["approval_amount"]) or "—",
            g["id"], _q(), g["id"])
         for i, g in enumerate(gd_rows)) or ("<tr><td class='mini' colspan=11>"
         "暂无固贷商机，点击右上角「＋ 新增项目」或到「商机管理 → 粘贴导入」导入</td></tr>")
@@ -3104,7 +3133,12 @@ def gov():
       <input name="unit" value="{unit}" placeholder="经营单位" style="width:120px">
       <input name="name" value="{name}" placeholder="项目" style="flex:1;min-width:160px">
       <input name="region" value="{region}" placeholder="区域" style="width:110px">
-      <input name="push_date" value="{push_date}" placeholder="推送日期 如10月29日" style="width:150px">
+      <div style="display:flex;gap:4px;align-items:center">
+        <input type="date" name="push_date" id="gdPushDate" value="{push_iso}" style="width:150px"
+          title="推送日期">
+        <button type="button" class="btn3 btn-sm" onclick="clearGdDate()" title="清空日期"
+          style="padding:7px 10px;line-height:1">✕</button>
+      </div>
       <button class="btn2">查询</button><a class="btn3 btn" style="text-align:center" href="/gov">重置</a>
     </form>
     <div class="tbl-wrap"><table>
@@ -3117,7 +3151,7 @@ def gov():
     <form method="post" action="/gov/gudai/save" class="frm">
       <input type="hidden" name="id" value="{id}">
       <div class="row">
-        <div><label>推送时间</label><input name="push_date" value="{push_date_val}" placeholder="如 10月29日"></div>
+        <div><label>推送时间</label><input type="date" name="push_date" value="{push_date_val}"></div>
         <div><label>经营单位</label><input name="unit" value="{unit_val}" placeholder="如 海珠支行"></div>
         <div style="flex:2"><label>项目名字 *</label><input name="name" required value="{name_val}"></div>
         <div><label>区域</label><input name="region" value="{region_val}" placeholder="如 东莞市"></div>
@@ -3130,11 +3164,21 @@ def gov():
       <label>商机情况</label><textarea name="content" rows="3">{content}</textarea>
       <label>营销情况及难点</label><textarea name="note" rows="2">{note}</textarea>
       <div style="margin-top:12px"><button>保存</button>{cancel_btn}</div></form></div>
+    <script>
+    function clearGdDate(){{
+      var el=document.getElementById('gdPushDate');
+      if(!el)return;
+      el.value='';
+      el.form.submit();
+    }}
+    </script>
     """.format(export_url=export_url, add_btn=add_btn, unit=unit, name=name,
-               region=region, push_date=push_date, gd_trs=gd_trs, pager=pager,
+               region=region, push_date=push_date,
+               push_iso=gd_date_iso(push_date) or push_date, gd_trs=gd_trs, pager=pager,
                form_display=form_display,
                form_ttl=("编辑固贷商机 #%s" % d["id"]) if d["id"] else "新增固贷商机",
-               id=d["id"], push_date_val=d["push_date"] or "", unit_val=d["unit"] or "",
+               id=d["id"], push_date_val=gd_date_iso(d["push_date"]) or (d["push_date"] or ""),
+               unit_val=d["unit"] or "",
                name_val=d["name"], region_val=d["region"] or "",
                amount=(d["amount"] if d["amount"] else ""),
                manager=d["manager"] or "",
@@ -3158,7 +3202,8 @@ def gov_gudai_save():
 
     unit = (f.get("unit") or "").strip()
     manager = (f.get("manager") or "").strip() or GUDAI_DIVISION.get(unit, "")
-    vals = ((f.get("push_date") or "").strip(), unit,
+    # 推送日期统一存 ISO（2026-10-29），旧数据「10月29日」显示时会自动补年份
+    vals = ((gd_date_iso(f.get("push_date")) or (f.get("push_date") or "").strip()), unit,
             (f.get("name") or "").strip() or "未命名项目",
             (f.get("region") or "").strip(), _num("amount"),
             (f.get("content") or "").strip(), manager,
@@ -3200,7 +3245,14 @@ def gov_gudai_export():
     if region:
         cond += " AND region LIKE ?"; args.append("%%%s%%" % region)
     if push_date:
-        cond += " AND push_date LIKE ?"; args.append("%%%s%%" % push_date)
+        # 日期组件传 2026-10-29；兼容库中旧数据「10月29日」与新数据「2026-10-29」
+        _pi = gd_date_iso(push_date)
+        if _pi:
+            _y, _m, _d = _pi.split("-")
+            cond += " AND (push_date = ? OR push_date = ?)"
+            args += [_pi, "%d月%d日" % (int(_m), int(_d))]
+        else:
+            cond += " AND push_date LIKE ?"; args.append("%%%s%%" % push_date)
     conn = get_db()
     rows = conn.execute("SELECT * FROM gudai_deals WHERE %s ORDER BY id" % cond, args).fetchall()
     conn.close()
@@ -3221,7 +3273,8 @@ def gov_gudai_export():
         c.alignment = Alignment(horizontal="center", vertical="center")
         c.border = border
     for i, g in enumerate(rows, start=1):
-        ws.append([i, g["push_date"] or "", g["unit"] or "", g["name"] or "",
+        ws.append([i, (gd_date_iso(g["push_date"]) or g["push_date"] or ""),
+                   g["unit"] or "", g["name"] or "",
                    g["region"] or "", g["amount"] if g["amount"] else "",
                    g["content"] or "", g["manager"] or "", g["note"] or "",
                    g["approval_amount"] if g["approval_amount"] else ""])
@@ -4208,7 +4261,8 @@ def deals_import_commit():
                 conn.execute(
                     "INSERT INTO gudai_deals (push_date, unit, name, region, amount, content, "
                     "manager, note, approval_amount, created, updated) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                    (g.get("push_date") or "", g.get("unit") or "", g.get("name") or "",
+                    (gd_date_iso(g.get("push_date")) or (g.get("push_date") or ""),
+                     g.get("unit") or "", g.get("name") or "",
                      g.get("region") or "", g.get("amount"), g.get("content") or "",
                      g.get("manager") or "", g.get("note") or "", g.get("approval_amount"),
                      now, now))
