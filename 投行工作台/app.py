@@ -1392,9 +1392,6 @@ button,.btn{padding:8px 16px;border:none;border-radius:7px;background:#2456c8;co
 .kpi{background:#fff;border:1px solid #e5e9f0;border-radius:12px;padding:14px 16px}
 .kpi .t{color:#5b6478;font-size:12px}.kpi .v{font-size:22px;font-weight:700;margin-top:6px}
 .kpi .v small{font-size:12px;font-weight:400;color:#5b6478}
-.ys-form{display:flex;gap:4px;align-items:center;margin:8px 0 0}
-.ys-form input{width:76px;padding:4px 6px;font-size:11.5px}
-.ys-form button{padding:4px 8px;font-size:11px;margin:0}
 .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600}
 .p1{background:#eaf0fd;color:#2456c8}.p2{background:#e8f6ee;color:#1a7f4d}
 .p3{background:#fdf4e3;color:#b97a12}.p4{background:#fdecea;color:#d0342c}
@@ -2540,7 +2537,14 @@ def tech():
     {banner}
     <div class="card"><h2>S70 贷款总览</h2>
       <form method="post" action="/tech/s70/yearstart" style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap">
-        <div><label>年初余额（亿元）</label><input name="year_start" type="number" step="any" value="{year_start}" style="width:150px"></div>
+        <div><label>年初余额（亿元）· S70 总</label>
+          <input name="year_start" type="number" step="any" value="{year_start_txt}" style="width:112px"></div>
+        <div><label>一般性贷款年初</label>
+          <input name="year_start_normal" type="number" step="any" value="{ys_normal_txt}" style="width:112px"></div>
+        <div><label>福费廷年初</label>
+          <input name="year_start_fuf" type="number" step="any" value="{ys_fuf_txt}" style="width:112px"></div>
+        <div><label>贴现年初</label>
+          <input name="year_start_disc" type="number" step="any" value="{ys_disc_txt}" style="width:112px"></div>
         <div><label>数据日期</label><select name="s70date" style="width:170px">{date_opts}</select></div>
         <div style="align-self:end"><button>保存 / 刷新</button></div>
       </form>
@@ -2550,31 +2554,13 @@ def tech():
           <div class="mini">较年初：<b style="color:{diff_color}">{s70_diff:+.4f}</b></div></div>
         <div class="kpi" style="flex:1"><div class="t">一般性贷款总余额（亿元）</div>
           <div class="v" style="font-size:20px">{s70_normal:.4f}</div>
-          <div class="mini">较年初：<b style="color:{c_normal}">{d_normal:+.4f}</b></div>
-          <form method="post" action="/tech/s70/yearstart" class="ys-form">
-            <input type="hidden" name="key" value="s70_year_start_normal">
-            <input type="hidden" name="s70date" value="{s70_date}">
-            <input name="year_start" type="number" step="any" value="{ys_normal_txt}" title="一般性贷款年初余额（亿元）">
-            <button class="btn3 btn-sm">存</button>
-          </form></div>
+          <div class="mini">较年初：<b style="color:{c_normal}">{d_normal:+.4f}</b></div></div>
         <div class="kpi" style="flex:1"><div class="t">福费廷总余额（亿元）</div>
           <div class="v" style="font-size:20px">{s70_fuf:.4f}</div>
-          <div class="mini">较年初：<b style="color:{c_fuf}">{d_fuf:+.4f}</b></div>
-          <form method="post" action="/tech/s70/yearstart" class="ys-form">
-            <input type="hidden" name="key" value="s70_year_start_fuf">
-            <input type="hidden" name="s70date" value="{s70_date}">
-            <input name="year_start" type="number" step="any" value="{ys_fuf_txt}" title="福费廷年初余额（亿元）">
-            <button class="btn3 btn-sm">存</button>
-          </form></div>
+          <div class="mini">较年初：<b style="color:{c_fuf}">{d_fuf:+.4f}</b></div></div>
         <div class="kpi" style="flex:1"><div class="t">贴现总余额（亿元）</div>
           <div class="v" style="font-size:20px">{s70_disc:.4f}</div>
-          <div class="mini">较年初：<b style="color:{c_disc}">{d_disc:+.4f}</b></div>
-          <form method="post" action="/tech/s70/yearstart" class="ys-form">
-            <input type="hidden" name="key" value="s70_year_start_disc">
-            <input type="hidden" name="s70date" value="{s70_date}">
-            <input name="year_start" type="number" step="any" value="{ys_disc_txt}" title="贴现年初余额（亿元）">
-            <button class="btn3 btn-sm">存</button>
-          </form></div>
+          <div class="mini">较年初：<b style="color:{c_disc}">{d_disc:+.4f}</b></div></div>
       </div>
     </div>
     {s70_detail_html}
@@ -2640,6 +2626,7 @@ def tech():
     模糊命中项进入人工复核，结果一键导出 Excel。
     <br><a class="btn" style="margin-top:8px" href="/matcher">🔗 打开跨表匹配</a></p></div>
     """.format(banner=banner, year_start=year_start, date_opts=date_opts,
+               year_start_txt=s70_num(year_start) or "0",
                s70_date=s70_date,
                s70_total=s70_total, s70_diff=s70_diff, diff_color=diff_color,
                ys_normal_txt=s70_num(ys_normal) or "0",
@@ -2772,17 +2759,19 @@ def tech_s70_import():
 
 @app.route("/tech/s70/yearstart", methods=["POST"])
 def tech_s70_yearstart():
-    # key 区分：S70总余额 / 一般性贷款 / 福费廷 / 贴现 各自维护年初余额
-    key = (request.form.get("key") or "s70_year_start").strip()
-    if key not in ("s70_year_start", "s70_year_start_normal",
-                   "s70_year_start_fuf", "s70_year_start_disc"):
-        key = "s70_year_start"
-    v = (request.form.get("year_start") or "").strip()
-    try:
-        val = float(v)
-    except ValueError:
-        val = 0.0
-    set_setting(key, str(val))
+    """顶部「保存 / 刷新」一次保存：S70 总 + 一般性 + 福费廷 + 贴现 四个年初余额"""
+    def _f(name):
+        try:
+            return float((request.form.get(name) or "").strip() or 0)
+        except ValueError:
+            return 0.0
+
+    for form_name, setting_key in (("year_start", "s70_year_start"),
+                                   ("year_start_normal", "s70_year_start_normal"),
+                                   ("year_start_fuf", "s70_year_start_fuf"),
+                                   ("year_start_disc", "s70_year_start_disc")):
+        if form_name in request.form:          # 只更新提交上来的字段
+            set_setting(setting_key, str(_f(form_name)))
     s70date = (request.form.get("s70date") or "").strip()
     return redirect("/tech?s70date=" + urllib.parse.quote(s70date))
 
