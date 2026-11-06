@@ -1724,12 +1724,12 @@ def deals():
             "<a class='c-ops' href='/deals/view/%d'>查看详情</a>"
             "<a class='c-ops' href='/deals/%d/edit'>编辑</a>"
             "<a class='c-ops del' href='javascript:delDeal(%d)'>删除</a></div>"
-            "<div class='c-text'>%s</div><div class='c-meta'>%s</div></td></tr>"
+            "<div class='c-text'>%s</div></td></tr>"
         ) % (
             DEAL_TYPE_PILL.get(t, "p6"), _esc(t),
             ("<div class='mini'>%s</div>" % _esc(r["sub_type"])) if r["sub_type"] else "",
             _esc(r["stage"]), _esc(r["status"]),
-            _esc(r["name"]), _date_of(r), r["id"], r["id"], r["id"], _esc(text), _meta(r))
+            _esc(r["name"]), _date_of(r), r["id"], r["id"], r["id"], _esc(text))
 
     def _row1(r, seq=0):
         """模块视角：序号 + 具体内容"""
@@ -1740,16 +1740,26 @@ def deals():
             "<a class='c-ops' href='/deals/view/%d'>查看详情</a>"
             "<a class='c-ops' href='/deals/%d/edit'>编辑</a>"
             "<a class='c-ops del' href='javascript:delDeal(%d)'>删除</a></div>"
-            "<div class='c-text'>%s</div><div class='c-meta'>%s</div></td></tr>"
-        ) % (seq_cell, _esc(r["name"]), _date_of(r), r["id"], r["id"], r["id"], _esc(text), _meta(r))
+            "<div class='c-text'>%s</div></td></tr>"
+        ) % (seq_cell, _esc(r["name"]), _date_of(r), r["id"], r["id"], r["id"], _esc(text))
 
+    PER = 10
     order = {t: i for i, t in enumerate(DEAL_TYPES)}
     rows_sorted = sorted(rows, key=lambda r: (order.get(r["deal_type"] or "", 99), -(r["amount"] or 0)))
     empty = "<tr><td class='mini' colspan='2'>暂无商机，可在下方新增，或用「粘贴导入 / 文件导入」批量录入。</td></tr>"
-    cards = "".join(_row2(r) for r in rows_sorted) or empty
+
+    # 全部视角：分页（每页 10 条，独立页码 page2）
+    _total2 = len(rows_sorted)
+    _pages2 = max(1, (_total2 + PER - 1) // PER)
+    try:
+        cur_page2 = max(1, int(request.args.get("page2", "1") or "1"))
+    except (TypeError, ValueError):
+        cur_page2 = 1
+    cur_page2 = min(cur_page2, _pages2)
+    cards = "".join(
+        _row2(r) for r in rows_sorted[(cur_page2 - 1) * PER: cur_page2 * PER]) or empty
 
     # 模块视图：按日期倒序 + 分页（每页 10 条）+ 序号
-    PER = 10
     _mrows = sorted(rows, key=lambda r: (_date_of(r) or "0000-00-00"), reverse=True)
     _total = len(_mrows)
     _pages = max(1, (_total + PER - 1) // PER)
@@ -1758,19 +1768,24 @@ def deals():
     cards_mod = "".join(_row1(r, (cur_page - 1) * PER + i + 1) for i, r in enumerate(_slice)) or empty
 
     def _q(**extra):
-        prm = [("typ", typ_key), ("dfrom", dfrom), ("dto", dto), ("q", q)] + list(extra.items())
+        prm = [("typ", typ_key), ("dfrom", dfrom), ("dto", dto), ("q", q),
+               ("stage", stage), ("status", status)] + list(extra.items())
         return urllib.parse.urlencode([(k, v) for k, v in prm if v])
 
-    pager = ""
-    if _pages > 1:
-        prev = ("<a class='btn btn3 btn-sm' href='/deals?%s'>上一页</a>" % _q(page=cur_page - 1)
-                if cur_page > 1 else
+    def _pager(cp, pages, total, page_key):
+        if pages <= 1:
+            return ""
+        prev = ("<a class='btn btn3 btn-sm' href='/deals?%s'>上一页</a>" % _q(**{page_key: cp - 1})
+                if cp > 1 else
                 "<span class='btn btn3 btn-sm' style='opacity:.4;pointer-events:none'>上一页</span>")
-        nxt = ("<a class='btn btn3 btn-sm' href='/deals?%s'>下一页</a>" % _q(page=cur_page + 1)
-               if cur_page < _pages else
+        nxt = ("<a class='btn btn3 btn-sm' href='/deals?%s'>下一页</a>" % _q(**{page_key: cp + 1})
+               if cp < pages else
                "<span class='btn btn3 btn-sm' style='opacity:.4;pointer-events:none'>下一页</span>")
-        pager = ("<div class='pager'>%s<span class='mini'>第 %d / %d 页 · 共 %d 条</span>%s</div>"
-                 % (prev, cur_page, _pages, _total, nxt))
+        return ("<div class='pager'>%s<span class='mini'>第 %d / %d 页 · 共 %d 条</span>%s</div>"
+                % (prev, cp, pages, total, nxt))
+
+    pager = _pager(cur_page, _pages, _total, "page")
+    pager2 = _pager(cur_page2, _pages2, _total2, "page2")
 
 
     funnel = "".join(
@@ -1849,8 +1864,8 @@ def deals():
       </form>
       <div class="tbl-wrap"><table class="two-col">
         <tr><th>商机类别</th><th>具体内容</th></tr>
-        %s</table></div></div>""" % (len(rows), typ_key, q, opts(STAGES, stage or ""),
-                                     opts(STATUSES, status or ""), cards)
+        %s</table></div>%s</div>""" % (len(rows), typ_key, q, opts(STAGES, stage or ""),
+                                     opts(STATUSES, status or ""), cards, pager2)
 
     body = """
     {banner}
