@@ -232,7 +232,7 @@ def s70_cell(col, v):
         return s70_mask(v)
     if col in ("loan_start", "loan_end"):
         return s70_ym(v)
-    if col == "balance_rmb":
+    if col in ("balance_rmb", "loan_amt_rmb"):
         return s70_wan(v)
     if col in S70_REAL_COLS:
         return s70_num(v)
