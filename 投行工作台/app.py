@@ -3135,14 +3135,14 @@ def gov():
       <input name="region" value="{region}" placeholder="区域" style="width:110px">
       <div style="display:flex;gap:4px;align-items:center">
         <input type="date" name="push_date" id="gdPushDate" value="{push_iso}" style="width:150px"
-          title="推送日期">
+          title="日期">
         <button type="button" class="btn3 btn-sm" onclick="clearGdDate()" title="清空日期"
           style="padding:7px 10px;line-height:1">✕</button>
       </div>
       <button class="btn2">查询</button><a class="btn3 btn" style="text-align:center" href="/gov">重置</a>
     </form>
     <div class="tbl-wrap"><table>
-      <tr><th style="width:40px">序号</th><th style="width:78px">推送时间</th><th>经营单位</th>
+      <tr><th style="width:40px">序号</th><th style="width:78px">日期</th><th>经营单位</th>
       <th>项目名字</th><th>区域</th><th style="width:100px">项目金额（亿元）</th><th>商机情况</th>
       <th>产品经理/分配经营单位</th><th>营销情况及难点</th><th style="width:100px">报批金额（亿元）</th><th>操作</th></tr>
       {gd_trs}</table></div>
@@ -3151,7 +3151,7 @@ def gov():
     <form method="post" action="/gov/gudai/save" class="frm">
       <input type="hidden" name="id" value="{id}">
       <div class="row">
-        <div><label>推送时间</label><input type="date" name="push_date" value="{push_date_val}"></div>
+        <div><label>日期</label><input type="date" name="push_date" value="{push_date_val}"></div>
         <div><label>经营单位</label><input name="unit" value="{unit_val}" placeholder="如 海珠支行"></div>
         <div style="flex:2"><label>项目名字 *</label><input name="name" required value="{name_val}"></div>
         <div><label>区域</label><input name="region" value="{region_val}" placeholder="如 东莞市"></div>
@@ -3261,7 +3261,7 @@ def gov_gudai_export():
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "固贷商机台账"
-    head = ["序号", "推送时间", "经营单位", "项目名字", "区域", "项目金额（亿元）",
+    head = ["序号", "日期", "经营单位", "项目名字", "区域", "项目金额（亿元）",
             "商机情况", "产品经理/分配经营单位", "营销情况及难点", "报批金额（亿元）"]
     ws.append(head)
     fill = PatternFill("solid", fgColor="12224A")
