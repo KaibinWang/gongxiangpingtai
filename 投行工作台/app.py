@@ -154,8 +154,8 @@ S70_COLS = [
     "pre_cust_name", "five_class", "loan_amt_rmb", "rate"]
 S70_REAL_COLS = {"amount_yi", "balance_rmb", "loan_amt_rmb", "rate"}
 
-# 列表/详情展示时脱敏的敏感字段（客户名称、借据号、客户号、行员号、批复流水号、会计产品名称与代码）
-S70_MASK_COLS = {"cust_name", "loan_no", "cust_no", "mgr_id", "mgr_id2",
+# 列表/详情展示时脱敏的敏感字段（客户名称、贷后管理人员、借据号、客户号、行员号、批复流水号、会计产品名称与代码）
+S70_MASK_COLS = {"cust_name", "mgr_name", "loan_no", "cust_no", "mgr_id", "mgr_id2",
                  "approval_no", "acct_prod", "acct_core"}
 
 
@@ -193,6 +193,50 @@ S70_FORM_GROUPS = [
 ]
 _S70_GROUP_COLS = [c for _, cols in S70_FORM_GROUPS for c in cols]
 assert sorted(_S70_GROUP_COLS) == sorted(S70_COLS), "S70 表单分组必须覆盖全部 50 列"
+
+
+def s70_ym(v):
+    """列表显示借据起止日期：只到「年-月」（2026-03-31 -> 2026-03），不改源数据"""
+    s = str(v or "").strip()
+    m = re.match(r"(\d{4})\s*[-/.年]\s*(\d{1,2})", s)
+    if m:
+        return "%s-%02d" % (m.group(1), int(m.group(2)))
+    return s
+
+
+def s70_wan(v):
+    """列表显示借据余额折人民币：折算万元并忽略小数（5000000 -> 500w），不改源数据"""
+    if v is None or v == "":
+        return ""
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return str(v)
+    return "%dw" % int(f / 10000)
+
+
+def s70_mask_name(v):
+    """姓名脱敏：保留姓氏，其余全掩（吴敏坚 -> 吴**，张三 -> 张*）"""
+    s = "" if v is None else str(v).strip()
+    if not s:
+        return ""
+    return s[0] + "*" * (len(s) - 1)
+
+
+def s70_cell(col, v):
+    """S70 列表单元格显示规则（仅显示层，不动源数据）：
+    敏感字段脱敏 / 借据起止日期只到年-月 / 借据余额折人民币显示为 xw / 数值格式化"""
+    if col == "mgr_name":
+        return s70_mask_name(v)
+    if col in S70_MASK_COLS:
+        return s70_mask(v)
+    if col in ("loan_start", "loan_end"):
+        return s70_ym(v)
+    if col == "balance_rmb":
+        return s70_wan(v)
+    if col in S70_REAL_COLS:
+        return s70_num(v)
+    return v or ""
 
 
 def s70_num(v):
@@ -2467,10 +2511,7 @@ def tech():
         "<a href='/tech?sid=%d&%s' style='margin-left:6px'>编辑</a> "
         "<a href='/tech/s70/delete/%d' onclick=\"return confirm('确认删除？')\" "
         "style='color:#d0342c;margin-left:6px'>删除</a></td></tr>"
-        % (r["id"], "".join("<td>%s</td>" % (
-            s70_mask(r[c]) if c in S70_MASK_COLS
-            else (s70_num(r[c]) if c in S70_REAL_COLS else (r[c] or "")))
-            for c in show_cols),
+        % (r["id"], "".join("<td>%s</td>" % s70_cell(c, r[c]) for c in show_cols),
            r["id"], r["id"], s70_q(), r["id"])
         for r in s70_rows) or ("<tr><td class='mini' colspan=%d>暂无 S70 贷款数据，点击右上角「＋ 新增」或导入</td></tr>"
                                % (len(show_cols) + 2))
