@@ -2537,7 +2537,7 @@ def tech():
     {banner}
     <div class="card"><h2>S70 贷款总览</h2>
       <form method="post" action="/tech/s70/yearstart" style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap">
-        <div><label>年初余额（亿元）S70 总</label>
+        <div><label>年初余额（亿元）：S70 总</label>
           <input name="year_start" type="number" step="any" value="{year_start_txt}" style="width:112px"></div>
         <div><label>一般性贷款年初</label>
           <input name="year_start_normal" type="number" step="any" value="{ys_normal_txt}" style="width:112px"></div>
