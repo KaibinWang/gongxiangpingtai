@@ -27,9 +27,7 @@ desktop.ini
 投行工作台/*_gd.xlsx
 
 # 业务数据库（含真实客户数据，不入版本库）
-投行工作台/workbench.db
-投行工作台/workbench.db-journal
-投行工作台/workbench.db-wal
+投行工作台/workbench.db*
 投行工作台-云端版/assets/data/workbench.db
 
 # 旧版本运行副本（数百 MB，不入库）

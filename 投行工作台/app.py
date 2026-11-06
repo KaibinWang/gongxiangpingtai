@@ -221,6 +221,47 @@ def iso_date_to_cn(s):
     return "%d年%d月%d日" % (int(m.group(1)), int(m.group(2)), int(m.group(3))) if m else ""
 
 
+# S70 导入时需归一化的日期列（data_date 存中文格式，借据起止日期存 ISO）
+S70_DATE_COLS = {"data_date", "loan_start", "loan_end"}
+XL_EPOCH = datetime.datetime(1899, 12, 30)   # Excel 1900 日期系统基准
+
+
+def norm_date(v, cn=True):
+    """把日期归一化：支持 datetime / Excel 序列号(46326) / 中文 / ISO / 纯数字字符串。
+    无法识别时原样返回；无效日期（如 9月31日）也原样保留，不擅自改数。"""
+    if v is None or v == "":
+        return ""
+    d = None
+    if isinstance(v, datetime.datetime):
+        d = v.date()
+    elif isinstance(v, datetime.date):
+        d = v
+    elif isinstance(v, (int, float)):
+        n = int(v)
+        if 20000 <= n <= 80000:            # 1954-08-01 ~ 2119-01-05 区间视为 Excel 序列号
+            d = (XL_EPOCH + datetime.timedelta(days=n)).date()
+    else:
+        s = str(v).strip()
+        m = re.match(r"\s*(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?", s)
+        if m:
+            try:
+                d = datetime.date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+            except ValueError:
+                d = None
+        else:
+            m = re.match(r"\s*(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})", s)
+            if m:
+                try:
+                    d = datetime.date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+                except ValueError:
+                    d = None
+            elif s.isdigit() and 20000 <= int(s) <= 80000:
+                d = (XL_EPOCH + datetime.timedelta(days=int(s))).date()
+    if d is None:
+        return str(v).strip()
+    return ("%d年%d月%d日" % (d.year, d.month, d.day)) if cn else d.strftime("%Y-%m-%d")
+
+
 # ----------------------------------------------------------------------------
 # 数据库
 # ----------------------------------------------------------------------------
@@ -2636,10 +2677,12 @@ def tech_s70_import():
             if i is None or i >= len(row) or row[i] is None or row[i] == "":
                 return ""
             v = row[i]
+            col = S70_COLS[j]
+            if col in S70_DATE_COLS:
+                # 兼容 Excel 序列号(46326)、datetime、中文、ISO 各种写法
+                return norm_date(v, cn=(col == "data_date"))
             if isinstance(v, datetime.datetime):
-                # 数据日期统一「2026年11月5日」不补零格式，与统计口径一致
-                return (("%d年%d月%d日" % (v.year, v.month, v.day)) if S70_COLS[j] == "data_date"
-                        else v.strftime("%Y-%m-%d"))
+                return v.strftime("%Y-%m-%d")
             if isinstance(v, float) and v.is_integer():
                 return str(int(v))
             return str(v).strip()
@@ -2713,7 +2756,15 @@ def tech_s70_save():
         except ValueError:
             return None
 
-    vals = [s(c) if c not in S70_REAL_COLS else n(c) for c in S70_EDIT_COLS]
+    def sv(c):
+        if c in S70_REAL_COLS:
+            return n(c)
+        if c in S70_DATE_COLS:
+            # 手动录入的 2026-10-31 / 46326 等统一成库里格式
+            return norm_date(s(c), cn=(c == "data_date"))
+        return s(c)
+
+    vals = [sv(c) for c in S70_EDIT_COLS]
     conn = get_db()
     if f.get("id"):
         sets = ",".join("%s=?" % c for c in S70_EDIT_COLS)
