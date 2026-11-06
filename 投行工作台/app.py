@@ -2545,7 +2545,12 @@ def tech():
       </div>
       <form method="get" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
         <input type="hidden" name="s70date" value="{s70_date}">
-        <input type="date" name="q_date" value="{q_date_iso}" style="width:160px" title="选择数据日期">
+        <div style="display:flex;gap:4px;align-items:center">
+          <input type="date" name="q_date" id="qDateInput" value="{q_date_iso}"
+            style="width:152px" title="选择数据日期">
+          <button type="button" class="btn3 btn-sm" onclick="clearQDate()" title="清空日期"
+            style="padding:7px 10px;line-height:1">✕</button>
+        </div>
         <input name="q_cust" value="{q_cust}" placeholder="客户名称" style="flex:1;min-width:140px">
         <input name="q_unit" value="{q_unit}" placeholder="经营单位" style="width:120px">
         <select name="q_credit" style="width:135px">
@@ -2559,6 +2564,12 @@ def tech():
       {s70_pager}
       <form id="s70BatchForm" method="post" action="/tech/s70/batch_delete"></form>
       <script>
+      function clearQDate(){{
+        var el=document.getElementById('qDateInput');
+        if(!el)return;
+        el.value='';
+        el.form.submit();
+      }}
       function s70ToggleAll(el){{
         document.querySelectorAll("input[name='ids']").forEach(function(c){{c.checked=el.checked}});
       }}
