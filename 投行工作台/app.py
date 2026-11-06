@@ -1449,7 +1449,8 @@ if(btnId){var b=document.getElementById(btnId);if(b)b.style.display=''}}</script
   <div class="c-txt"><b>数据合规提示</b>本系统不与行内业务系统对接，
     <span class="hl">不读取、不存储任何行内业务数据</span>；客户信息由部门管理员及客户经理自行维护，
     商机与风险信息来自公开渠道采集，仅供营销辅助参考，
-    <span class="hl">不构成授信决策依据</span>，涉及关键决策请回行内权威渠道核实。</div>
+    <span class="hl">不构成授信决策依据</span>，涉及关键决策请回行内权威渠道核实。
+    <span class="hl">本平台为非涉密平台；严禁传输、处理涉密内容。</span></div>
 </div>
 <div class="main">{{ body|safe }}</div></div></div></body></html>
 """
