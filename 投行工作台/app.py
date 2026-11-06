@@ -154,8 +154,8 @@ S70_COLS = [
     "pre_cust_name", "five_class", "loan_amt_rmb", "rate"]
 S70_REAL_COLS = {"amount_yi", "balance_rmb", "loan_amt_rmb", "rate"}
 
-# 列表/详情展示时脱敏的敏感字段（借据号、客户号、行员号、批复流水号、会计产品名称与代码）
-S70_MASK_COLS = {"loan_no", "cust_no", "mgr_id", "mgr_id2",
+# 列表/详情展示时脱敏的敏感字段（客户名称、借据号、客户号、行员号、批复流水号、会计产品名称与代码）
+S70_MASK_COLS = {"cust_name", "loan_no", "cust_no", "mgr_id", "mgr_id2",
                  "approval_no", "acct_prod", "acct_core"}
 
 
@@ -172,9 +172,8 @@ def s70_mask(v):
         return s[:keep] + "*" * (n - keep * 2) + s[-keep:]
     return s[:4] + "*" * (n - 8) + s[-4:]
 
-# S70 列表默认隐藏的列（目前不隐藏任何列；如需隐藏，把列名加进此集合即可，
-# 编辑、详情、导出始终保留全部字段）
-S70_HIDDEN_COLS = set()
+# S70 列表默认隐藏的列（二级支行 / 贷后管理机构，均含支行名；编辑、详情、导出仍保留全部字段）
+S70_HIDDEN_COLS = {"sub_branch", "post_mgr_org"}
 
 # 新增/编辑表单分组（全部 50 列都可填）
 S70_FORM_GROUPS = [
