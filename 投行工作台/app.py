@@ -1576,7 +1576,7 @@ MENUS = [
     ("draft", "/draft", "📝", "初稿生成"),
     ("users", "/users", "👤", "用户管理"),
     ("config", "/config", "⚙", "配置管理"),
-    ("agent", "/agent", "🤖", "智能体配置"),
+    # ("agent", "/agent", "🤖", "智能体配置"),   # 暂时隐藏菜单（路由 /agent 保留，去掉注释即可恢复）
 ]
 MENU_KEYS = [m[0] for m in MENUS]
 # 未绑定角色（或历史 user 角色）的兜底可见菜单：全部业务菜单，不含管理菜单
